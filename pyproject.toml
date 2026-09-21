@@ -13,6 +13,14 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.6"]
 
+# setuptools cannot auto-discover packages in a flat layout that has more than
+# one top-level directory — it refuses rather than guesses which are packages
+# and which are not. `models/` is dbt SQL, not a Python package, so discovery
+# has to be told exactly what to ship. Without this, `pip install -e .` works
+# locally (the package is already present) but fails on a clean CI checkout.
+[tool.setuptools]
+packages = ["generate", "ingest", "tools"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
