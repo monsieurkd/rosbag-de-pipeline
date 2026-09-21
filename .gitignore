@@ -6,6 +6,8 @@ __pycache__/
 *.pyo
 .pytest_cache/
 .ruff_cache/
+# Editable-install metadata, created by `make setup`. Never source.
+*.egg-info/
 
 # --- dbt ---
 target/
