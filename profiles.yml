@@ -1,0 +1,28 @@
+# =============================================================================
+# profiles.yml — how dbt connects to your warehouse
+# =============================================================================
+# Normally this lives at ~/.dbt/profiles.yml and is NEVER committed, because it
+# holds warehouse credentials. This project uses DuckDB — a single local file
+# with no password — so committing it is safe and makes the whole pipeline
+# "clone-and-run" for anyone reviewing it: no account, no secrets, no setup.
+#
+# The Makefile exports DBT_PROFILES_DIR=. so dbt finds this file instead of
+# looking in ~/.dbt.
+# =============================================================================
+
+rosbag_telemetry:            # MUST match the `profile:` in dbt_project.yml
+
+  target: dev
+
+  outputs:
+    dev:
+      type: duckdb
+      # The DuckDB database file — this IS the warehouse. Overridable so
+      # `make verify` can build two independent warehouses and compare them
+      # without clobbering the working copy.
+      path: "{{ env_var('ROS_DUCKDB_PATH', 'dev.duckdb') }}"
+      threads: 4
+      # No `extensions:` block on purpose. Parquet reading is built into
+      # DuckDB; listing it here makes the adapter try to install the extension
+      # on first connect, which needs network + a writable home directory and
+      # breaks clone-and-run for no benefit.

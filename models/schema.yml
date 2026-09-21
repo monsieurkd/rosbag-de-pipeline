@@ -1,0 +1,98 @@
+version: 2
+
+models:
+  - name: stg_bronze
+    description: >
+      Union of the three topic tables landed as Parquet in `data/bronze`.
+      The only model that touches the filesystem; everything above it works on
+      relations, so swapping Parquet for object storage or DuckDB for a
+      warehouse is a change to this model alone.
+    columns:
+      - name: session_id
+        description: Recording session identifier, one bag per session.
+        tests:
+          - not_null
+      - name: robot_id
+        description: Which robot produced the recording (from the bag's sidecar).
+        tests:
+          - not_null
+      - name: topic
+        description: ROS topic the message was published on.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['/imu/data', '/odom', '/scan']
+      - name: t_ns
+        description: Message timestamp in nanoseconds since the Unix epoch.
+        tests:
+          - not_null
+
+  - name: silver_sensor_readings
+    description: >
+      One typed row per sensor message, with heading and acceleration
+      magnitude derived. A view, so it always reflects the latest bronze
+      landing rather than a stale materialisation.
+    columns:
+      - name: session_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('gold_session_health')
+              field: session_id
+      - name: t_ns
+        tests:
+          - not_null
+      - name: topic
+        tests:
+          - accepted_values:
+              values: ['/imu/data', '/odom', '/scan']
+
+  - name: gold_session_health
+    description: >
+      One row per recording session with sensor aggregates and an explicit
+      health verdict. Grain is (session_id, robot_id) — the unit a fleet
+      engineer asks about.
+    columns:
+      - name: session_id
+        description: Primary key — exactly one row per recorded session.
+        tests:
+          - unique
+          - not_null
+      - name: robot_id
+        tests:
+          - not_null
+      - name: health_status
+        description: >
+          Explicit verdict rather than a score, so a failure names itself.
+          `imu_degraded` means the IMU delivered under 90% of its nominal
+          100 Hz.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['healthy', 'imu_degraded', 'imu_missing', 'lidar_missing']
+      - name: total_samples
+        description: Total messages across all topics in the session.
+        tests:
+          - not_null
+      - name: imu_rate_pct_of_nominal
+        description: IMU sample rate as a percentage of the nominal 100 Hz.
+        tests:
+          - not_null
+
+  - name: gold_robot_summary
+    description: >
+      Per-robot rollup across all sessions — answers "is this robot reliable?"
+      where session health answers "was this run okay?".
+    columns:
+      - name: robot_id
+        description: Primary key — one row per robot seen in the raw data.
+        tests:
+          - unique
+          - not_null
+      - name: sessions_recorded
+        tests:
+          - not_null
+      - name: healthy_session_pct
+        description: Share of this robot's sessions that came back healthy.
+        tests:
+          - not_null

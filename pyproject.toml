@@ -1,0 +1,21 @@
+[project]
+name = "rosbag-de-pipeline"
+version = "1.0.0"
+description = "Medallion-architecture analytics pipeline over ROS bag robot telemetry"
+requires-python = ">=3.11"
+dependencies = [
+    "dbt-duckdb>=1.8",
+    "duckdb>=1.0",
+    "pyarrow>=15",
+    "rosbags>=0.10",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

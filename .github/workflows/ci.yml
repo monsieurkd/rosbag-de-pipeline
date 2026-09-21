@@ -1,0 +1,41 @@
+# CI: prove the two claims this repo makes, on every push.
+#
+# Not a generic "does it install" workflow. It runs the pipeline end-to-end and,
+# critically, runs `make verify` — the idempotency check. A repo that claims
+# reproducible builds should have that claim checked by something other than the
+# author's memory.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: uv venv .venv && uv pip install --python .venv/bin/python -e ".[dev]"
+
+      - name: Generate bags
+        run: make bags
+
+      - name: Land bronze
+        run: make ingest
+
+      - name: dbt build (models + data-quality tests)
+        run: make build
+
+      - name: pytest
+        run: .venv/bin/pytest tests/ -q
+
+      # The headline guarantee. If this fails, the README is lying.
+      - name: Verify idempotency
+        run: make verify

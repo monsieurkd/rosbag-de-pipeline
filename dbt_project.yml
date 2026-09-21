@@ -1,0 +1,40 @@
+# =============================================================================
+# dbt_project.yml — the control center of this dbt project
+# =============================================================================
+name: 'rosbag_telemetry'
+version: '1.0.0'
+profile: 'rosbag_telemetry'
+config-version: 2
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# =============================================================================
+# Models — default materialization per medallion layer
+# =============================================================================
+# The layering is the point of this project, so it is declared once here rather
+# than repeated as a config block in every model file. Anything in `silver/`
+# becomes a view (cheap, always reflects the latest landing), and `gold/` is
+# materialized as a table because those are the artifacts we rebuild and diff.
+#
+# Bronze is NOT a dbt layer on purpose: bronze is the raw Parquet landing zone
+# written by `ingest/` and read back via an external source. If bronze lived in
+# dbt, reprocessing a bag would mean re-running the whole warehouse instead of
+# just re-landing one session — which is exactly what the idempotency
+# requirement in the README forbids.
+# =============================================================================
+models:
+  rosbag_telemetry:
+    silver:
+      +materialized: view
+      +schema: silver
+    gold:
+      +materialized: table
+      +schema: gold
